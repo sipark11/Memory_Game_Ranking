@@ -4,10 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Memory Game Ranking | 실시간 타임 랭킹 시스템</title>
-  <!-- Firebase Compat SDK (실시간 다중 기기 및 비밀번호 동기화용) -->
+  <!-- Firebase Compat SDK (실시간 다중 기기 및 비밀번호 동기화) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <style>
+    /* ==========================================================================
+       1. Design Tokens & Variables
+       ========================================================================== */
     :root {
       --bg-base: #06080d;
       --bg-sidebar: rgba(11, 15, 25, 0.94);
@@ -43,6 +46,9 @@
       --shadow-card: 0 20px 50px rgba(0, 0, 0, 0.55);
     }
 
+    /* ==========================================================================
+       2. Reset & Base Styles
+       ========================================================================== */
     * {
       box-sizing: border-box;
       margin: 0;
@@ -62,15 +68,28 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* App Shell: 좌측 사이드바 + 우측 풀스크린 랭킹 보드 */
+    /* 숫자 입력칸 기본 스핀 버튼 제거 (Tab 이동 및 입력 편의성 향상) */
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    input[type="number"] {
+      -moz-appearance: textfield;
+    }
+
+    /* ==========================================================================
+       3. App Layout & Sidebar
+       ========================================================================== */
     .app-shell {
       display: grid;
-      grid-template-columns: 256px 1fr;
+      grid-template-columns: 260px 1fr;
       height: 100vh;
+      height: 100dvh;
       overflow: hidden;
     }
 
-    /* Sidebar */
     .sidebar {
       background: var(--bg-sidebar);
       backdrop-filter: blur(20px);
@@ -88,7 +107,7 @@
     .sidebar-top {
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 16px;
     }
 
     .brand {
@@ -127,8 +146,8 @@
       margin-top: 2px;
     }
 
-    /* Mode Switcher (전광판 / 관리자) */
-    .mode-switch {
+    /* Segmented Controls (전광판/관리자, 자동 흐름/수동 스크롤) */
+    .segmented-switch {
       display: grid;
       grid-template-columns: 1fr 1fr;
       background: rgba(6, 9, 15, 0.95);
@@ -137,33 +156,37 @@
       border: 1px solid var(--border-subtle);
     }
 
-    .mode-btn {
+    .seg-btn {
       border: none;
       background: transparent;
       color: var(--text-secondary);
       padding: 7px 8px;
       border-radius: 7px;
-      font-size: 0.8rem;
+      font-size: 0.79rem;
       font-weight: 700;
       cursor: pointer;
       transition: all 0.18s ease;
+      white-space: nowrap;
     }
 
-    .mode-btn:hover {
+    .seg-btn:hover {
       color: var(--text-primary);
     }
 
-    .mode-btn.active {
+    .seg-btn.active {
       background: rgba(56, 189, 248, 0.18);
       color: var(--accent);
       box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.38);
     }
 
-    /* Sidebar Section */
     .side-group {
       display: flex;
       flex-direction: column;
       gap: 6px;
+    }
+
+    .side-group.hidden {
+      display: none;
     }
 
     .side-label {
@@ -173,65 +196,9 @@
       letter-spacing: 0.06em;
       color: var(--text-muted);
       padding: 0 6px;
-      margin-bottom: 2px;
+      margin-bottom: 1px;
     }
 
-    /* Category Navigation (전체 / 개인 / 팀) */
-    .cat-nav {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .cat-btn {
-      width: 100%;
-      border: 1px solid transparent;
-      background: transparent;
-      color: var(--text-secondary);
-      padding: 9px 12px;
-      border-radius: 10px;
-      font-size: 0.85rem;
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      transition: all 0.18s ease;
-    }
-
-    .cat-btn:hover {
-      background: rgba(255, 255, 255, 0.04);
-      color: var(--text-primary);
-    }
-
-    .cat-btn.active {
-      background: linear-gradient(135deg, rgba(56, 189, 248, 0.18), rgba(99, 102, 241, 0.16));
-      color: #ffffff;
-      border-color: rgba(56, 189, 248, 0.35);
-    }
-
-    .cat-btn-left {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .cat-count {
-      font-size: 0.74rem;
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.06);
-      color: var(--text-secondary);
-    }
-
-    .cat-btn.active .cat-count {
-      background: rgba(56, 189, 248, 0.25);
-      color: var(--accent);
-    }
-
-    /* Sidebar Search */
     .search-box {
       position: relative;
       width: 100%;
@@ -264,15 +231,14 @@
       pointer-events: none;
     }
 
-    /* Compact Summary Card in Sidebar */
     .side-stats {
       background: rgba(9, 12, 19, 0.75);
       border: 1px solid var(--border-subtle);
       border-radius: 11px;
-      padding: 11px 12px;
+      padding: 12px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 9px;
     }
 
     .side-stat-row {
@@ -285,38 +251,27 @@
 
     .side-stat-row strong {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      color: var(--gold);
+      color: var(--text-primary);
       font-size: 0.88rem;
     }
 
-    .flow-toggle-btn {
-      width: 100%;
-      border: 1px solid var(--border-subtle);
-      background: rgba(255, 255, 255, 0.04);
+    .side-stat-row strong.gold-val {
+      color: var(--gold);
+    }
+
+    .side-notice {
+      font-size: 0.72rem;
+      line-height: 1.5;
+      color: var(--text-muted);
+      padding: 0 4px;
+    }
+
+    .side-notice .warn-sub {
+      display: block;
+      margin-top: 3px;
       color: var(--text-secondary);
-      padding: 7px 10px;
-      border-radius: 8px;
-      font-size: 0.76rem;
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      transition: all 0.18s ease;
     }
 
-    .flow-toggle-btn:hover {
-      border-color: var(--border-accent);
-      color: var(--text-primary);
-    }
-
-    .flow-toggle-btn.active {
-      color: var(--accent);
-      border-color: rgba(56, 189, 248, 0.3);
-      background: rgba(56, 189, 248, 0.08);
-    }
-
-    /* Sidebar Footer */
     .sidebar-bottom {
       display: flex;
       flex-direction: column;
@@ -367,18 +322,20 @@
       50% { opacity: 0.55; transform: scale(1.2); }
     }
 
-    /* Main Stage */
+    /* ==========================================================================
+       4. Main Stage & Admin Panel
+       ========================================================================== */
     .main-stage {
       display: flex;
       flex-direction: column;
       height: 100vh;
+      height: 100dvh;
       padding: 16px 20px;
       gap: 14px;
       overflow: hidden;
       min-width: 0;
     }
 
-    /* Admin Panel */
     .admin-panel {
       background: var(--bg-surface);
       backdrop-filter: blur(18px);
@@ -410,17 +367,13 @@
       margin-bottom: 12px;
     }
 
-    .panel-left-controls {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 12px;
-    }
-
     .panel-title {
       font-size: 0.92rem;
       font-weight: 800;
       color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .panel-actions {
@@ -429,48 +382,38 @@
       gap: 6px;
     }
 
-    /* Entry Type Toggle (개인 / 팀) */
-    .type-toggle {
-      display: inline-flex;
-      background: var(--bg-input);
-      padding: 3px;
-      border-radius: 8px;
-      border: 1px solid var(--border-subtle);
-      gap: 3px;
-    }
-
-    .type-btn {
-      border: none;
-      background: transparent;
-      color: var(--text-secondary);
-      padding: 5px 12px;
-      border-radius: 6px;
-      font-size: 0.79rem;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.16s ease;
-    }
-
-    .type-btn:hover {
-      color: var(--text-primary);
-    }
-
-    .type-btn.active {
-      background: linear-gradient(135deg, rgba(56, 189, 248, 0.24), rgba(99, 102, 241, 0.24));
-      color: #ffffff;
-      box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.45);
-    }
-
-    /* Form Grid */
+    /* ==========================================================================
+       5. Forms & Buttons
+       ========================================================================== */
     .form-grid {
       display: grid;
-      grid-template-columns: 1.5fr 1.8fr auto;
+      grid-template-columns: 1.15fr 0.95fr 0.95fr 1.6fr auto;
       gap: 10px;
       align-items: end;
     }
 
-    .form-grid.is-team {
-      grid-template-columns: 1.1fr 1.5fr 1.7fr auto;
+    .form-notice {
+      margin-top: 9px;
+      font-size: 0.74rem;
+      color: var(--text-secondary);
+      line-height: 1.45;
+    }
+
+    .form-notice .warn-highlight {
+      color: #fda4af;
+      font-weight: 600;
+    }
+
+    .modal-notice {
+      font-size: 0.73rem;
+      color: var(--text-secondary);
+      line-height: 1.45;
+      margin-top: -4px;
+    }
+
+    .modal-notice .warn-highlight {
+      color: #fda4af;
+      font-weight: 600;
     }
 
     .field {
@@ -479,14 +422,16 @@
       gap: 5px;
     }
 
-    .field.hidden {
-      display: none;
-    }
-
     .field label {
       font-size: 0.73rem;
       font-weight: 600;
       color: var(--text-secondary);
+    }
+
+    .field label .opt-tag {
+      font-weight: 500;
+      color: var(--text-muted);
+      font-size: 0.7rem;
     }
 
     .input {
@@ -525,7 +470,6 @@
       font-weight: 700;
     }
 
-    /* Buttons */
     .btn {
       border: none;
       border-radius: var(--radius-sm);
@@ -578,7 +522,9 @@
       color: #fff;
     }
 
-    /* Leaderboard Card */
+    /* ==========================================================================
+       6. Leaderboard & Ticker
+       ========================================================================== */
     .board-card {
       flex: 1;
       min-height: 0;
@@ -595,8 +541,8 @@
 
     .board-header {
       display: grid;
-      grid-template-columns: 64px 68px 1fr 142px 134px;
-      padding: 11px 20px;
+      grid-template-columns: 68px 1fr 148px 134px;
+      padding: 11px 22px;
       background: rgba(9, 12, 19, 0.85);
       border-bottom: 1px solid var(--border-subtle);
       font-size: 0.72rem;
@@ -608,10 +554,18 @@
     }
 
     .board-header.viewer-only {
-      grid-template-columns: 64px 68px 1fr 156px;
+      grid-template-columns: 68px 1fr 164px;
     }
 
-    /* Pinned Top 3 Section */
+    .action-header {
+      display: none;
+      text-align: right;
+    }
+
+    .board-header:not(.viewer-only) .action-header {
+      display: block;
+    }
+
     .pinned-top-list {
       position: relative;
       z-index: 3;
@@ -624,7 +578,6 @@
       box-shadow: 0 10px 24px rgba(0, 0, 0, 0.48);
     }
 
-    /* 4위 이하 흐르는 애니메이션 뷰포트 */
     .scroll-viewport {
       flex: 1;
       min-height: 0;
@@ -634,6 +587,7 @@
 
     .scroll-viewport.manual-scroll {
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
       scrollbar-gutter: stable;
     }
 
@@ -650,43 +604,39 @@
       will-change: transform;
     }
 
-    /* Rank Rows */
+    .rank-list-clone {
+      display: none;
+    }
+
     .rank-row {
       display: grid;
-      grid-template-columns: 64px 68px 1fr 142px 134px;
+      grid-template-columns: 68px 1fr 148px 134px;
       align-items: center;
-      padding: 12px 20px;
+      padding: 12px 22px;
       border-bottom: 1px solid var(--border-subtle);
       transition: background 0.16s ease;
     }
 
     .rank-row.viewer-only {
-      grid-template-columns: 64px 68px 1fr 156px;
+      grid-template-columns: 68px 1fr 164px;
     }
 
     .rank-row:hover {
       background: var(--bg-surface-hover);
     }
 
-    /* Top 3 Styling */
-    .rank-row.top-1 {
-      background: linear-gradient(90deg, var(--gold-bg), transparent 70%);
-    }
-    .rank-row.top-2 {
-      background: linear-gradient(90deg, var(--silver-bg), transparent 70%);
-    }
-    .rank-row.top-3 {
-      background: linear-gradient(90deg, var(--bronze-bg), transparent 70%);
-    }
+    .rank-row.top-1 { background: linear-gradient(90deg, var(--gold-bg), transparent 70%); }
+    .rank-row.top-2 { background: linear-gradient(90deg, var(--silver-bg), transparent 70%); }
+    .rank-row.top-3 { background: linear-gradient(90deg, var(--bronze-bg), transparent 70%); }
 
     .rank-badge {
-      width: 33px;
-      height: 33px;
+      width: 34px;
+      height: 34px;
       border-radius: 9px;
       display: grid;
       place-items: center;
       font-weight: 800;
-      font-size: 0.9rem;
+      font-size: 0.92rem;
       font-variant-numeric: tabular-nums;
       background: rgba(255, 255, 255, 0.04);
       color: var(--text-secondary);
@@ -712,31 +662,6 @@
       border-color: var(--bronze-border);
     }
 
-    /* Entry Type Pill */
-    .kind-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 2px 8px;
-      border-radius: 6px;
-      font-size: 0.7rem;
-      font-weight: 700;
-      width: fit-content;
-    }
-
-    .kind-badge.individual {
-      background: rgba(148, 163, 184, 0.12);
-      color: #cbd5e1;
-      border: 1px solid rgba(148, 163, 184, 0.22);
-    }
-
-    .kind-badge.team {
-      background: rgba(99, 102, 241, 0.16);
-      color: #a5b4fc;
-      border: 1px solid rgba(129, 140, 248, 0.32);
-    }
-
-    /* Player / Team Display */
     .player-info {
       display: flex;
       align-items: baseline;
@@ -746,14 +671,15 @@
       min-width: 0;
     }
 
-    .player-name {
+    .player-nickname {
       font-weight: 700;
-      font-size: 1rem;
+      font-size: 1.04rem;
       color: var(--text-primary);
+      letter-spacing: -0.01em;
     }
 
-    .team-members-inline {
-      font-size: 0.8rem;
+    .player-subinfo {
+      font-size: 0.79rem;
       font-weight: 500;
       color: var(--text-secondary);
     }
@@ -771,7 +697,7 @@
 
     .record-time {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 1.12rem;
+      font-size: 1.14rem;
       font-weight: 800;
       font-variant-numeric: tabular-nums;
       letter-spacing: 0.02em;
@@ -806,7 +732,9 @@
       color: var(--text-muted);
     }
 
-    /* Modals */
+    /* ==========================================================================
+       7. Modals & Toast
+       ========================================================================== */
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -816,6 +744,7 @@
       place-items: center;
       padding: 20px;
       z-index: 100;
+      overflow-y: auto;
     }
 
     .modal-backdrop.open {
@@ -836,6 +765,7 @@
       border-radius: var(--radius-lg);
       padding: 24px;
       box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75);
+      margin: auto;
     }
 
     .modal h3 {
@@ -857,6 +787,12 @@
       margin-bottom: 20px;
     }
 
+    .modal-row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
     .modal-footer {
       display: flex;
       justify-content: flex-end;
@@ -874,7 +810,6 @@
       overflow-x: auto;
     }
 
-    /* Toast */
     .toast {
       position: fixed;
       bottom: 20px;
@@ -898,24 +833,57 @@
       opacity: 1;
     }
 
-    /* Responsive Design */
-    @media (max-width: 960px) {
-      .form-grid,
-      .form-grid.is-team {
-        grid-template-columns: 1fr 1fr;
+    /* ==========================================================================
+       8. Responsive Breakpoints (PC · 태블릿 · 모바일 스크롤 완벽 대응)
+       ========================================================================== */
+    @media (max-width: 1100px) {
+      .form-grid {
+        grid-template-columns: 1fr 1fr 1fr;
       }
-      .form-grid .time-field,
-      .form-grid .submit-btn {
+      .form-grid .time-field {
         grid-column: span 2;
+      }
+      .form-grid .submit-btn {
+        grid-column: span 1;
       }
     }
 
     @media (max-width: 820px) {
+      /* 전광판 모드: 상단 1~3위 고정 + 하단 흐름/수동 스크롤 */
       .app-shell {
         display: flex;
         flex-direction: column;
         height: 100vh;
+        height: 100dvh;
         overflow: hidden;
+      }
+
+      /* 관리자 모드(body.is-admin-mode): 모바일 전체 화면 자연 스크롤 허용 */
+      body.is-admin-mode {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      body.is-admin-mode .app-shell {
+        height: auto;
+        min-height: 100dvh;
+        overflow: visible;
+      }
+
+      body.is-admin-mode .main-stage {
+        height: auto;
+        overflow: visible;
+        padding-bottom: 40px;
+      }
+
+      body.is-admin-mode .board-card {
+        flex: none;
+        overflow: visible;
+      }
+
+      body.is-admin-mode .scroll-viewport {
+        overflow: visible;
+        max-height: none;
       }
 
       .sidebar {
@@ -928,33 +896,24 @@
       }
 
       .sidebar-top {
-        gap: 10px;
-      }
-
-      .sidebar-header-row {
-        display: flex;
-        justify-content: space-between;
+        flex-direction: row;
+        flex-wrap: wrap;
         align-items: center;
-        gap: 10px;
+        justify-content: space-between;
+        gap: 8px;
       }
 
       .brand-title p,
       .side-label,
       .side-stats,
+      .side-notice,
       .sidebar-bottom {
         display: none;
       }
 
-      .cat-nav {
-        flex-direction: row;
-        gap: 6px;
-      }
-
-      .cat-btn {
-        padding: 7px 10px;
-        font-size: 0.8rem;
-        justify-content: center;
-        gap: 6px;
+      .side-group {
+        flex: 1;
+        min-width: 145px;
       }
 
       .main-stage {
@@ -967,8 +926,7 @@
     }
 
     @media (max-width: 600px) {
-      .form-grid,
-      .form-grid.is-team {
+      .form-grid {
         grid-template-columns: 1fr;
       }
       .form-grid .time-field,
@@ -980,16 +938,16 @@
       }
       .rank-row,
       .rank-row.viewer-only {
-        grid-template-columns: 42px auto 1fr auto;
+        grid-template-columns: 44px 1fr auto;
         gap: 8px;
-        padding: 11px 12px;
+        padding: 11px 14px;
       }
       .record-time {
         font-size: 0.98rem;
         text-align: right;
       }
       .row-actions {
-        grid-column: 2 / 5;
+        grid-column: 2 / 4;
         justify-content: flex-end;
         padding-top: 6px;
         border-top: 1px dashed rgba(255, 255, 255, 0.06);
@@ -999,67 +957,59 @@
 </head>
 <body>
   <div class="app-shell">
-    <!-- Left Compact Sidebar -->
+    <!-- 좌측 사이드바 -->
     <aside class="sidebar">
       <div class="sidebar-top">
-        <div class="sidebar-header-row">
-          <div class="brand">
-            <div class="brand-icon">🧠</div>
-            <div class="brand-title">
-              <h1>Memory Game Ranking</h1>
-              <p>실시간 타임어택 리더보드</p>
-            </div>
+        <div class="brand">
+          <div class="brand-icon">🧠</div>
+          <div class="brand-title">
+            <h1>Memory Game Ranking</h1>
+            <p>실시간 개인 타임어택 리더보드</p>
           </div>
         </div>
 
-        <!-- 전광판 / 관리자 모드 스위치 -->
-        <div class="mode-switch" role="tablist">
-          <button type="button" class="mode-btn active" id="viewerModeBtn">전광판</button>
-          <button type="button" class="mode-btn" id="adminModeBtn">관리자</button>
+        <!-- 화면 모드 선택 -->
+        <div class="segmented-switch" role="tablist" aria-label="화면 모드 선택">
+          <button type="button" class="seg-btn active" id="viewerModeBtn">전광판</button>
+          <button type="button" class="seg-btn" id="adminModeBtn">관리자</button>
         </div>
 
-        <!-- 전체 / 개인 / 팀 랭킹 선택 메뉴 -->
-        <div class="side-group">
-          <div class="side-label">랭킹 분류</div>
-          <nav class="cat-nav" aria-label="랭킹 분류 선택">
-            <button type="button" class="cat-btn active" data-filter="all">
-              <span class="cat-btn-left">🏆 전체 랭킹</span>
-              <span class="cat-count" id="countAll">0</span>
-            </button>
-            <button type="button" class="cat-btn" data-filter="individual">
-              <span class="cat-btn-left">👤 개인 랭킹</span>
-              <span class="cat-count" id="countIndividual">0</span>
-            </button>
-            <button type="button" class="cat-btn" data-filter="team">
-              <span class="cat-btn-left">👥 팀 랭킹</span>
-              <span class="cat-count" id="countTeam">0</span>
-            </button>
-          </nav>
+        <!-- 전광판 스크롤 방식 선택 (자동 흐름 / 수동 스크롤) -->
+        <div class="side-group" id="scrollModeGroup">
+          <div class="side-label">순위 스크롤 방식</div>
+          <div class="segmented-switch" role="group" aria-label="순위 스크롤 방식 선택">
+            <button type="button" class="seg-btn active" id="autoScrollModeBtn">자동 흐름</button>
+            <button type="button" class="seg-btn" id="manualScrollModeBtn">수동 스크롤</button>
+          </div>
         </div>
 
-        <!-- 검색 -->
+        <!-- 참가자 검색 -->
         <div class="side-group">
-          <div class="side-label">빠른 검색</div>
+          <div class="side-label">참가자 검색</div>
           <div class="search-box">
             <span class="search-icon">🔍</span>
-            <input type="text" id="searchInput" placeholder="이름, 팀명, 조원 검색..." />
+            <input type="text" id="searchInput" placeholder="메모리 왕, 10101, 홍길동..." />
           </div>
         </div>
 
-        <!-- 1위 기록 및 흐름 애니메이션 제어 -->
+        <!-- 요약 통계 -->
         <div class="side-stats">
           <div class="side-stat-row">
-            <span>현재 분류 1위</span>
-            <strong id="topRecord">--:--.---</strong>
+            <span>총 참가자</span>
+            <strong><span id="totalCount">0</span>명</strong>
           </div>
-          <button type="button" class="flow-toggle-btn active" id="flowToggleBtn" title="4위 이하 자동 흐름 애니메이션 켜기/끄기">
-            <span>하위 순위 흐름</span>
-            <span id="flowToggleText">ON</span>
-          </button>
+          <div class="side-stat-row">
+            <span>현재 1위 기록</span>
+            <strong class="gold-val" id="topRecord">--:--.---</strong>
+          </div>
         </div>
+
+        <p class="side-notice">
+          ※ 학번과 이름을 정확하게 기재해야 상품을 받을 수 있습니다.
+          <span class="warn-sub">※ 익명 참여 시 상품을 받을 수 없습니다.</span>
+        </p>
       </div>
 
-      <!-- 하단 클라우드 연결 상태 -->
       <div class="sidebar-bottom">
         <button type="button" id="syncStatusBtn" class="sync-badge" title="클라우드 DB 연결 설정">
           <span class="sync-dot"></span>
@@ -1068,23 +1018,12 @@
       </div>
     </aside>
 
-    <!-- Right Main Leaderboard Stage -->
+    <!-- 우측 메인 랭킹 보드 -->
     <main class="main-stage">
-      <!-- Admin Input Panel (관리자 모드 전용) -->
+      <!-- 관리자 입력 패널 -->
       <section class="admin-panel" id="adminPanel" aria-label="기록 입력 및 관리 패널">
         <div class="panel-header">
-          <div class="panel-left-controls">
-            <span class="panel-title">⚡ 신규 기록 등록</span>
-            <div class="type-toggle" role="group" aria-label="개인 또는 팀 선택">
-              <button type="button" class="type-btn active" id="typeIndividualBtn" data-type="individual">
-                👤 개인
-              </button>
-              <button type="button" class="type-btn" id="typeTeamBtn" data-type="team">
-                👥 팀
-              </button>
-            </div>
-          </div>
-
+          <span class="panel-title">⚡ 개인 기록 등록</span>
           <div class="panel-actions">
             <button type="button" class="btn btn-ghost" id="sortOrderBtn">기준: 최단 시간순 ↑</button>
             <button type="button" class="btn btn-ghost" id="changePinBtn">Password 변경</button>
@@ -1094,100 +1033,107 @@
 
         <form id="recordForm" class="form-grid">
           <div class="field">
-            <label for="primaryName" id="primaryNameLabel">이름 *</label>
-            <input type="text" id="primaryName" class="input" placeholder="예: 김민수" required maxlength="28" />
+            <label for="nicknameInput">닉네임 *</label>
+            <input type="text" id="nicknameInput" class="input" placeholder="예: 메모리 왕" required maxlength="24" />
           </div>
 
-          <div class="field hidden" id="teamMembersField">
-            <label for="teamMembers">조원 이름 *</label>
-            <input type="text" id="teamMembers" class="input" placeholder="예: 김민수, 이서연, 박지훈" maxlength="60" />
+          <div class="field">
+            <label for="studentIdInput">학번 <span class="opt-tag">(선택)</span></label>
+            <input type="text" id="studentIdInput" class="input" placeholder="예: 10101 (익명 시 생략)" maxlength="20" />
+          </div>
+
+          <div class="field">
+            <label for="realNameInput">이름 <span class="opt-tag">(선택)</span></label>
+            <input type="text" id="realNameInput" class="input" placeholder="예: 홍길동 (익명 시 생략)" maxlength="20" />
           </div>
 
           <div class="field time-field">
-            <label>시간 기록 (분 : 초 . 밀리초)</label>
+            <label for="minInput">시간 기록 (분 : 초 . 밀리초)</label>
             <div class="time-inputs">
-              <input type="number" id="minInput" class="input" placeholder="00" min="0" max="999" aria-label="분" />
+              <input type="number" id="minInput" class="input time-part" data-prev="realNameInput" data-next="secInput" placeholder="00" min="0" max="999" aria-label="분" />
               <span class="time-sep">:</span>
-              <input type="number" id="secInput" class="input" placeholder="00" min="0" max="59" required aria-label="초" />
+              <input type="number" id="secInput" class="input time-part" data-prev="minInput" data-next="msInput" placeholder="00" min="0" max="59" required aria-label="초" />
               <span class="time-sep">.</span>
-              <input type="number" id="msInput" class="input" placeholder="000" min="0" max="999" aria-label="밀리초" />
+              <input type="number" id="msInput" class="input time-part" data-prev="secInput" data-next="recordSubmitBtn" placeholder="000" min="0" max="999" aria-label="밀리초" />
             </div>
           </div>
 
-          <button type="submit" class="btn btn-primary submit-btn">+ 기록 등록</button>
+          <button type="submit" id="recordSubmitBtn" class="btn btn-primary submit-btn">+ 기록 등록</button>
         </form>
+        <p class="form-notice">
+          ※ 학번과 이름을 정확하게 기재해야 상품을 받을 수 있습니다. · <span class="warn-highlight">익명 참여 시 상품은 받을 수 없습니다.</span>
+        </p>
       </section>
 
-      <!-- Full-Height Leaderboard Card -->
+      <!-- 실시간 랭킹 테이블 -->
       <section class="board-card" id="boardCard" aria-label="실시간 랭킹 보드">
         <div class="board-header viewer-only" id="boardHeader">
           <div>순위</div>
-          <div>구분</div>
-          <div>참가자 / 팀</div>
+          <div>참가자 (닉네임 · 학번 이름)</div>
           <div>기록</div>
-          <div id="actionHeader" style="display:none; text-align:right;">관리</div>
+          <div class="action-header">관리</div>
         </div>
 
-        <!-- 1, 2, 3위 상단 고정 영역 -->
+        <!-- 1~3위 상단 고정 영역 -->
         <div class="pinned-top-list" id="pinnedTopList"></div>
 
-        <!-- 4위 이하 부드럽게 흐르는 영역 -->
+        <!-- 4위 이하 자동 흐름 / 수동 스크롤 영역 -->
         <div class="scroll-viewport" id="scrollViewport">
           <div class="scroll-track" id="scrollTrack">
             <div id="rankListPrimary"></div>
-            <div id="rankListClone" style="display:none;" aria-hidden="true"></div>
+            <div id="rankListClone" class="rank-list-clone" aria-hidden="true"></div>
           </div>
         </div>
       </section>
     </main>
   </div>
 
-  <!-- Edit Modal -->
+  <!-- 기록 수정 모달 -->
   <div class="modal-backdrop" id="editModal">
     <div class="modal">
       <h3>기록 수정</h3>
-      <p class="desc">선택한 참가자(또는 팀)의 정보와 시간 기록을 수정하면 모든 화면에 즉시 반영됩니다.</p>
+      <p class="desc">선택한 참가자의 닉네임, 학번, 이름 및 시간 기록을 수정하면 모든 화면에 즉시 반영됩니다.</p>
       <form id="editForm" class="modal-stack">
         <input type="hidden" id="editId" />
 
         <div class="field">
-          <label>참가 유형</label>
-          <div class="type-toggle" style="width: fit-content;">
-            <button type="button" class="type-btn active" id="editTypeIndividualBtn">👤 개인</button>
-            <button type="button" class="type-btn" id="editTypeTeamBtn">👥 팀</button>
+          <label for="editNickname">닉네임 *</label>
+          <input type="text" id="editNickname" class="input" placeholder="예: 메모리 왕" required maxlength="24" />
+        </div>
+
+        <div class="modal-row-2">
+          <div class="field">
+            <label for="editStudentId">학번 <span class="opt-tag">(선택)</span></label>
+            <input type="text" id="editStudentId" class="input" placeholder="예: 10101" maxlength="20" />
+          </div>
+          <div class="field">
+            <label for="editRealName">이름 <span class="opt-tag">(선택)</span></label>
+            <input type="text" id="editRealName" class="input" placeholder="예: 홍길동" maxlength="20" />
           </div>
         </div>
 
-        <div class="field">
-          <label for="editPrimaryName" id="editPrimaryNameLabel">이름 *</label>
-          <input type="text" id="editPrimaryName" class="input" required maxlength="28" />
-        </div>
-
-        <div class="field hidden" id="editMembersField">
-          <label for="editTeamMembers">조원 이름 *</label>
-          <input type="text" id="editTeamMembers" class="input" placeholder="예: 김민수, 이서연, 박지훈" maxlength="60" />
-        </div>
+        <p class="modal-notice">※ <span class="warn-highlight">익명 참여 시 상품은 받을 수 없습니다.</span></p>
 
         <div class="field">
-          <label>시간 기록 (분 : 초 . 밀리초)</label>
+          <label for="editMin">시간 기록 (분 : 초 . 밀리초)</label>
           <div class="time-inputs">
-            <input type="number" id="editMin" class="input" min="0" max="999" />
+            <input type="number" id="editMin" class="input time-part" data-prev="editRealName" data-next="editSec" min="0" max="999" aria-label="분" />
             <span class="time-sep">:</span>
-            <input type="number" id="editSec" class="input" min="0" max="59" required />
+            <input type="number" id="editSec" class="input time-part" data-prev="editMin" data-next="editMs" min="0" max="59" required aria-label="초" />
             <span class="time-sep">.</span>
-            <input type="number" id="editMs" class="input" min="0" max="999" />
+            <input type="number" id="editMs" class="input time-part" data-prev="editSec" data-next="editSubmitBtn" min="0" max="999" aria-label="밀리초" />
           </div>
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="btn btn-ghost" onclick="closeModal('editModal')">취소</button>
-          <button type="submit" class="btn btn-primary">수정 저장</button>
+          <button type="button" class="btn btn-ghost" data-close-modal="editModal">취소</button>
+          <button type="submit" id="editSubmitBtn" class="btn btn-primary">수정 저장</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Admin Password Modal -->
+  <!-- 관리자 Password 모달 -->
   <div class="modal-backdrop" id="pinModal">
     <div class="modal">
       <h3 id="pinModalTitle">관리자 Password 인증</h3>
@@ -1200,14 +1146,14 @@
           <input type="password" id="pinInput" class="input" placeholder="••••" required autocomplete="off" />
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-ghost" onclick="closeModal('pinModal')">취소</button>
+          <button type="button" class="btn btn-ghost" data-close-modal="pinModal">취소</button>
           <button type="submit" class="btn btn-primary">확인</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Cloud Sync Setup Modal -->
+  <!-- 클라우드 동기화 설정 모달 -->
   <div class="modal-backdrop" id="cloudModal">
     <div class="modal">
       <h3>🌐 실시간 웹 동기화 설정 (Firebase)</h3>
@@ -1217,41 +1163,31 @@
       <form id="cloudForm" class="modal-stack">
         <div class="field">
           <label for="fbDbUrl">Firebase Realtime Database URL</label>
-          <input
-            type="url"
-            id="fbDbUrl"
-            class="input"
-            placeholder="https://your-project-default-rtdb.firebaseio.com"
-          />
+          <input type="url" id="fbDbUrl" class="input" placeholder="https://your-project-default-rtdb.firebaseio.com" />
         </div>
         <div class="field">
           <label for="fbApiKey">Firebase API Key (선택사항)</label>
-          <input
-            type="text"
-            id="fbApiKey"
-            class="input"
-            placeholder="AIzaSy..."
-          />
+          <input type="text" id="fbApiKey" class="input" placeholder="AIzaSy..." />
         </div>
         <div class="code-hint">
           ✅ 현재 배포 코드의 <strong>DEFAULT_FIREBASE_CONFIG</strong>에 저장소 주소가 기본 내장되어 있습니다.
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-danger-ghost" id="disconnectCloudBtn">연결 해제</button>
-          <button type="button" class="btn btn-ghost" onclick="closeModal('cloudModal')">닫기</button>
+          <button type="button" class="btn btn-ghost" data-close-modal="cloudModal">닫기</button>
           <button type="submit" class="btn btn-primary">연결 및 저장</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Confirm Delete Modal -->
+  <!-- 삭제 확인 모달 -->
   <div class="modal-backdrop" id="confirmModal">
     <div class="modal">
       <h3 id="confirmTitle">기록 삭제</h3>
       <p class="desc" id="confirmDesc">정말 이 기록을 삭제하시겠습니까?</p>
       <div class="modal-footer">
-        <button type="button" class="btn btn-ghost" onclick="closeModal('confirmModal')">취소</button>
+        <button type="button" class="btn btn-ghost" data-close-modal="confirmModal">취소</button>
         <button type="button" class="btn btn-danger-ghost" id="confirmYesBtn">삭제하기</button>
       </div>
     </div>
@@ -1260,83 +1196,136 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    /**
-     * ============================================================================
-     * [배포용 기본 Firebase 설정]
-     * ============================================================================
-     */
+    /* ==========================================================================
+       1. Configuration & Constants
+       ========================================================================== */
     const DEFAULT_FIREBASE_CONFIG = {
       apiKey: "",
       databaseURL: "https://memory-game-ranking-b3c40-default-rtdb.asia-southeast1.firebasedatabase.app"
     };
 
     const STORAGE_KEYS = {
-      RECORDS: "memory_game_ranking_records_v3",
+      RECORDS: "memory_game_ranking_records_v4",
       PIN: "memory_game_ranking_admin_pin_v3",
       CLOUD: "apex_ranking_cloud_config_v1",
       SORT: "apex_ranking_sort_asc_v1"
     };
 
-    let records = [];
-    let currentAdminPin = localStorage.getItem(STORAGE_KEYS.PIN) || "1234";
-    let currentEntryType = "individual"; // "individual" | "team"
-    let editEntryType = "individual";    // "individual" | "team"
-    let currentFilter = "all";           // "all" | "individual" | "team"
-    let isAdminMode = false;
-    let pinActionMode = "verify";        // "verify" | "change"
-    let sortAscending = localStorage.getItem(STORAGE_KEYS.SORT) !== "false";
-    let dbRef = null;
-    let pinRef = null;
-    let isCloudConnected = false;
-    let pendingConfirmAction = null;
+    const TICKER_SPEED_PX_PER_SEC = 34;
 
-    // 부드러운 흐름 애니메이션 상태
-    let animFrameId = null;
-    let lastFrameTime = null;
-    let scrollOffset = 0;
-    let isHoverPaused = false;
-    let isAutoScrollEnabled = true;
-    const SCROLL_SPEED_PX_PER_SEC = 34;
-
-    // DOM 요소
-    const boardCardEl = document.getElementById("boardCard");
-    const pinnedTopListEl = document.getElementById("pinnedTopList");
-    const scrollViewportEl = document.getElementById("scrollViewport");
-    const scrollTrackEl = document.getElementById("scrollTrack");
-    const rankListPrimaryEl = document.getElementById("rankListPrimary");
-    const rankListCloneEl = document.getElementById("rankListClone");
-    const adminPanelEl = document.getElementById("adminPanel");
-    const viewerModeBtn = document.getElementById("viewerModeBtn");
-    const adminModeBtn = document.getElementById("adminModeBtn");
-    const boardHeaderEl = document.getElementById("boardHeader");
-    const actionHeaderEl = document.getElementById("actionHeader");
-    const searchInputEl = document.getElementById("searchInput");
-
-    // 초기화
-    document.addEventListener("DOMContentLoaded", () => {
-      updateSortButtonUI();
-      setFormEntryType("individual");
-      initDataSource();
-      bindEvents();
-      startTickerLoop();
-
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("mode") === "admin") {
-        requestAdminMode();
+    /* ==========================================================================
+       2. Application State & DOM Cache
+       ========================================================================== */
+    const state = {
+      records: [],
+      adminPin: localStorage.getItem(STORAGE_KEYS.PIN) || "1234",
+      isAdminMode: false,
+      pinActionMode: "verify", // "verify" | "change"
+      sortAscending: localStorage.getItem(STORAGE_KEYS.SORT) !== "false",
+      dbRef: null,
+      pinRef: null,
+      pendingConfirmAction: null,
+      ticker: {
+        frameId: null,
+        lastTime: null,
+        offset: 0,
+        paused: false,
+        enabled: true // true: 자동 흐름, false: 수동 스크롤
       }
-    });
+    };
 
+    const dom = {
+      boardCard: document.getElementById("boardCard"),
+      boardHeader: document.getElementById("boardHeader"),
+      pinnedTopList: document.getElementById("pinnedTopList"),
+      scrollViewport: document.getElementById("scrollViewport"),
+      scrollTrack: document.getElementById("scrollTrack"),
+      rankListPrimary: document.getElementById("rankListPrimary"),
+      rankListClone: document.getElementById("rankListClone"),
+      adminPanel: document.getElementById("adminPanel"),
+      viewerModeBtn: document.getElementById("viewerModeBtn"),
+      adminModeBtn: document.getElementById("adminModeBtn"),
+      scrollModeGroup: document.getElementById("scrollModeGroup"),
+      autoScrollModeBtn: document.getElementById("autoScrollModeBtn"),
+      manualScrollModeBtn: document.getElementById("manualScrollModeBtn"),
+      searchInput: document.getElementById("searchInput"),
+      totalCount: document.getElementById("totalCount"),
+      topRecord: document.getElementById("topRecord"),
+      syncStatusBtn: document.getElementById("syncStatusBtn"),
+      syncStatusText: document.getElementById("syncStatusText"),
+      sortOrderBtn: document.getElementById("sortOrderBtn"),
+      toast: document.getElementById("toast")
+    };
+
+    /* ==========================================================================
+       3. Utility & Formatting Helpers
+       ========================================================================== */
     function sanitizeFirebaseUrl(url) {
       if (!url) return "";
       return url.trim().replace(/^(https?:\/\/)+/i, "https://").replace(/\/+$/, "");
     }
 
-    // 데이터 소스 초기화
+    function parseTimeInputs(minId, secId, msId) {
+      const mins = Math.max(0, parseInt(document.getElementById(minId).value || "0", 10));
+      const secs = Math.max(0, parseInt(document.getElementById(secId).value || "0", 10));
+      const msRaw = (document.getElementById(msId).value || "0").trim();
+      const ms = msRaw.length === 2
+        ? parseInt(msRaw, 10) * 10
+        : Math.min(999, Math.max(0, parseInt(msRaw || "0", 10)));
+
+      return (mins * 60 * 1000) + (secs * 1000) + ms;
+    }
+
+    function formatTime(totalMs) {
+      const safeMs = Math.max(0, Number(totalMs) || 0);
+      const mins = Math.floor(safeMs / 60000);
+      const secs = Math.floor((safeMs % 60000) / 1000);
+      const ms = safeMs % 1000;
+
+      return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}.${String(ms).padStart(3, "0")}`;
+    }
+
+    function normalizeRecord(item) {
+      const nickname = (item.nickname || item.name || "").trim() || "(닉네임 없음)";
+      const studentId = (item.studentId || "").trim();
+      const realName = (item.realName || "").trim();
+      const subInfo = [studentId, realName].filter(Boolean).join(" ");
+
+      return {
+        ...item,
+        id: String(item.id),
+        totalMs: Number(item.totalMs) || 0,
+        nickname,
+        studentId,
+        realName,
+        subInfo
+      };
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function escapeAttr(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    /* ==========================================================================
+       4. Data Storage & Firebase Realtime Sync
+       ========================================================================== */
     function initDataSource() {
       const savedCloud = JSON.parse(localStorage.getItem(STORAGE_KEYS.CLOUD) || "null");
-      const activeConfig = (savedCloud && savedCloud.databaseURL) ? savedCloud : DEFAULT_FIREBASE_CONFIG;
+      const activeConfig = savedCloud?.databaseURL ? savedCloud : DEFAULT_FIREBASE_CONFIG;
 
-      if (activeConfig && activeConfig.databaseURL) {
+      if (activeConfig?.databaseURL) {
         connectFirebase(activeConfig);
       } else {
         loadLocalDemoData();
@@ -1359,53 +1348,43 @@
 
     function startFirebaseApp(config) {
       try {
-        const cleanUrl = sanitizeFirebaseUrl(config.databaseURL);
-        const appConfig = { databaseURL: cleanUrl };
+        const appConfig = { databaseURL: sanitizeFirebaseUrl(config.databaseURL) };
         if (config.apiKey) appConfig.apiKey = config.apiKey.trim();
 
         firebase.initializeApp(appConfig);
         const db = firebase.database();
-        dbRef = db.ref("apex_leaderboard/records");
-        pinRef = db.ref("apex_leaderboard/admin_pin");
+        state.dbRef = db.ref("apex_leaderboard/records");
+        state.pinRef = db.ref("apex_leaderboard/admin_pin");
 
         db.ref(".info/connected").on("value", (snap) => {
-          const connected = snap.val() === true;
-          isCloudConnected = connected;
-          updateSyncStatusUI(connected);
+          updateSyncStatusUI(snap.val() === true);
         });
 
         // 클라우드 저장소의 관리자 Password 실시간 동기화
-        pinRef.on(
+        state.pinRef.on(
           "value",
           (snapshot) => {
             const cloudPin = snapshot.val();
             if (cloudPin !== null && cloudPin !== undefined && String(cloudPin).trim() !== "") {
-              currentAdminPin = String(cloudPin).trim();
-              localStorage.setItem(STORAGE_KEYS.PIN, currentAdminPin);
+              state.adminPin = String(cloudPin).trim();
+              localStorage.setItem(STORAGE_KEYS.PIN, state.adminPin);
             } else {
-              pinRef.set(currentAdminPin).catch(() => {});
+              state.pinRef.set(state.adminPin).catch(() => {});
             }
           },
-          (error) => {
-            console.error("Password 동기화 오류:", error);
-          }
+          (error) => console.error("Password 동기화 오류:", error)
         );
 
-        // 실시간 랭킹 데이터 리스너 (모든 기기에서 등록된 전체 기록 로드)
-        dbRef.on(
+        // 실시간 개인 랭킹 데이터 리스너
+        state.dbRef.on(
           "value",
           (snapshot) => {
             const val = snapshot.val();
-            if (!val) {
-              records = [];
-            } else {
-              records = Object.entries(val)
-                .filter(([, item]) => item && typeof item === "object")
-                .map(([id, item]) => ({
-                  id: String(id),
-                  ...item
-                }));
-            }
+            state.records = !val
+              ? []
+              : Object.entries(val)
+                  .filter(([, item]) => item && typeof item === "object" && item.entryType !== "team")
+                  .map(([id, item]) => ({ id: String(id), ...item }));
             renderBoard();
           },
           (error) => {
@@ -1421,22 +1400,21 @@
     }
 
     function loadLocalDemoData() {
-      isCloudConnected = false;
-      dbRef = null;
-      pinRef = null;
+      state.dbRef = null;
+      state.pinRef = null;
       updateSyncStatusUI(false);
 
       const saved = localStorage.getItem(STORAGE_KEYS.RECORDS);
       if (saved) {
-        records = JSON.parse(saved);
+        state.records = JSON.parse(saved).filter((item) => item && item.entryType !== "team");
       } else {
         const now = Date.now();
-        records = [
-          { id: "sample_1", entryType: "team", name: "브레인스톰", members: "김민수, 이서연, 박지훈", totalMs: 42350, updatedAt: now - 3600000 },
-          { id: "sample_2", entryType: "individual", name: "강하늘", members: "", totalMs: 45120, updatedAt: now - 1800000 },
-          { id: "sample_3", entryType: "team", name: "메모리킹", members: "최유진, 정우성", totalMs: 48900, updatedAt: now - 600000 },
-          { id: "sample_4", entryType: "individual", name: "송지아", members: "", totalMs: 51400, updatedAt: now - 300000 },
-          { id: "sample_5", entryType: "team", name: "알파고", members: "한도윤, 윤서아", totalMs: 54110, updatedAt: now - 200000 }
+        state.records = [
+          { id: "sample_1", nickname: "메모리 왕", studentId: "10101", realName: "홍길동", totalMs: 42350, updatedAt: now - 3600000 },
+          { id: "sample_2", nickname: "기억의신", studentId: "10204", realName: "이서연", totalMs: 45120, updatedAt: now - 1800000 },
+          { id: "sample_3", nickname: "스피드런", studentId: "10319", realName: "박지훈", totalMs: 48900, updatedAt: now - 600000 },
+          { id: "sample_4", nickname: "익명의 고수", studentId: "", realName: "", totalMs: 51400, updatedAt: now - 300000 },
+          { id: "sample_5", nickname: "알파메모리", studentId: "10521", realName: "한도윤", totalMs: 54110, updatedAt: now - 200000 }
         ];
         saveLocalRecords();
       }
@@ -1444,270 +1422,435 @@
     }
 
     function saveLocalRecords() {
-      localStorage.setItem(STORAGE_KEYS.RECORDS, JSON.stringify(records));
+      localStorage.setItem(STORAGE_KEYS.RECORDS, JSON.stringify(state.records));
     }
 
+    /* ==========================================================================
+       5. UI Rendering & Scroll Mode Control
+       ========================================================================== */
     function updateSyncStatusUI(online) {
-      const badge = document.getElementById("syncStatusBtn");
-      const text = document.getElementById("syncStatusText");
-      if (online) {
-        badge.classList.add("online");
-        text.textContent = "클라우드 실시간 동기화 중";
+      dom.syncStatusBtn.classList.toggle("online", online);
+      dom.syncStatusText.textContent = online ? "클라우드 실시간 동기화 중" : "로컬 데모 모드";
+    }
+
+    function updateSortButtonUI() {
+      dom.sortOrderBtn.textContent = state.sortAscending ? "기준: 최단 시간순 ↑" : "기준: 최장 시간순 ↓";
+    }
+
+    function setScrollMode(isAuto) {
+      state.ticker.enabled = isAuto;
+      dom.autoScrollModeBtn.classList.toggle("active", isAuto);
+      dom.manualScrollModeBtn.classList.toggle("active", !isAuto);
+
+      if (isAuto) {
+        dom.scrollViewport.classList.remove("manual-scroll");
+        dom.scrollViewport.scrollTop = 0;
       } else {
-        badge.classList.remove("online");
-        text.textContent = "로컬 데모 모드";
+        resetTickerOffset();
+        dom.rankListClone.style.display = "none";
+        dom.scrollViewport.classList.add("manual-scroll");
       }
     }
 
-    // 부드러운 4위 이하 흐름 애니메이션 루프
+    function setAdminMode(enable) {
+      state.isAdminMode = enable;
+      document.body.classList.toggle("is-admin-mode", enable);
+      dom.adminModeBtn.classList.toggle("active", enable);
+      dom.viewerModeBtn.classList.toggle("active", !enable);
+      dom.adminPanel.classList.toggle("visible", enable);
+      dom.boardHeader.classList.toggle("viewer-only", !enable);
+      dom.scrollModeGroup.classList.toggle("hidden", enable);
+
+      if (enable) {
+        resetTickerOffset();
+        dom.rankListClone.style.display = "none";
+        dom.scrollViewport.classList.add("manual-scroll");
+      } else {
+        setScrollMode(state.ticker.enabled);
+      }
+
+      renderBoard();
+    }
+
+    function resetTickerOffset() {
+      state.ticker.offset = 0;
+      dom.scrollTrack.style.transform = "translate3d(0, 0, 0)";
+    }
+
     function startTickerLoop() {
-      if (animFrameId) cancelAnimationFrame(animFrameId);
-      lastFrameTime = performance.now();
+      if (state.ticker.frameId) cancelAnimationFrame(state.ticker.frameId);
+      state.ticker.lastTime = performance.now();
 
       function step(now) {
-        const dt = Math.min((now - lastFrameTime) / 1000, 0.1);
-        lastFrameTime = now;
+        const dt = Math.min((now - state.ticker.lastTime) / 1000, 0.1);
+        state.ticker.lastTime = now;
 
-        const primaryHeight = rankListPrimaryEl.offsetHeight;
-        const viewportHeight = scrollViewportEl.clientHeight;
+        const primaryHeight = dom.rankListPrimary.offsetHeight;
+        const viewportHeight = dom.scrollViewport.clientHeight;
         const shouldFlow =
-          !isAdminMode &&
-          isAutoScrollEnabled &&
+          !state.isAdminMode &&
+          state.ticker.enabled &&
           primaryHeight > viewportHeight &&
           primaryHeight > 0;
 
         if (shouldFlow) {
-          pinnedTopListEl.classList.add("has-flow-below");
-          if (rankListCloneEl.style.display !== "block") {
-            rankListCloneEl.style.display = "block";
+          dom.pinnedTopList.classList.add("has-flow-below");
+          if (dom.rankListClone.style.display !== "block") {
+            dom.rankListClone.style.display = "block";
           }
-          if (!isHoverPaused) {
-            scrollOffset += SCROLL_SPEED_PX_PER_SEC * dt;
-            if (scrollOffset >= primaryHeight) {
-              scrollOffset -= primaryHeight;
+          if (!state.ticker.paused) {
+            state.ticker.offset += TICKER_SPEED_PX_PER_SEC * dt;
+            if (state.ticker.offset >= primaryHeight) {
+              state.ticker.offset -= primaryHeight;
             }
-            scrollTrackEl.style.transform = `translate3d(0, -${scrollOffset}px, 0)`;
+            dom.scrollTrack.style.transform = `translate3d(0, -${state.ticker.offset}px, 0)`;
           }
         } else {
-          const hasAnyScrollItems = rankListPrimaryEl.children.length > 0;
-          pinnedTopListEl.classList.toggle("has-flow-below", hasAnyScrollItems && pinnedTopListEl.children.length > 0);
-          if (rankListCloneEl.style.display !== "none") {
-            rankListCloneEl.style.display = "none";
+          const hasScrollItems = dom.rankListPrimary.children.length > 0;
+          dom.pinnedTopList.classList.toggle("has-flow-below", hasScrollItems && dom.pinnedTopList.children.length > 0);
+          if (dom.rankListClone.style.display !== "none") {
+            dom.rankListClone.style.display = "none";
           }
-          if (scrollOffset !== 0) {
-            scrollOffset = 0;
-            scrollTrackEl.style.transform = "translate3d(0, 0, 0)";
+          if (state.ticker.offset !== 0) {
+            resetTickerOffset();
           }
         }
 
-        animFrameId = requestAnimationFrame(step);
+        state.ticker.frameId = requestAnimationFrame(step);
       }
 
-      animFrameId = requestAnimationFrame(step);
+      state.ticker.frameId = requestAnimationFrame(step);
     }
 
-    // 개인 / 팀 입력 폼 전환
-    function setFormEntryType(type) {
-      currentEntryType = type;
-      const indBtn = document.getElementById("typeIndividualBtn");
-      const teamBtn = document.getElementById("typeTeamBtn");
-      const formGrid = document.getElementById("recordForm");
-      const nameLabel = document.getElementById("primaryNameLabel");
-      const nameInput = document.getElementById("primaryName");
-      const membersField = document.getElementById("teamMembersField");
-      const membersInput = document.getElementById("teamMembers");
+    function createRankRowHtml(item, now) {
+      const topClass = item.rank <= 3 ? `top-${item.rank}` : "";
+      const rankIcon = item.rank === 1 ? "👑" : item.rank === 2 ? "🥈" : item.rank === 3 ? "🥉" : item.rank;
+      const isRecent = item.updatedAt && now - item.updatedAt < 60000;
 
-      if (type === "team") {
-        teamBtn.classList.add("active");
-        indBtn.classList.remove("active");
-        formGrid.classList.add("is-team");
-        nameLabel.textContent = "팀 이름 *";
-        nameInput.placeholder = "예: 브레인스톰";
-        membersField.classList.remove("hidden");
-        membersInput.required = true;
-      } else {
-        indBtn.classList.add("active");
-        teamBtn.classList.remove("active");
-        formGrid.classList.remove("is-team");
-        nameLabel.textContent = "이름 *";
-        nameInput.placeholder = "예: 김민수";
-        membersField.classList.add("hidden");
-        membersInput.required = false;
-        membersInput.value = "";
+      return `
+        <div class="rank-row ${topClass} ${state.isAdminMode ? "" : "viewer-only"}">
+          <div>
+            <div class="rank-badge">${rankIcon}</div>
+          </div>
+
+          <div class="player-info">
+            <span class="player-nickname">${escapeHtml(item.nickname)}</span>
+            ${item.subInfo ? `<span class="player-subinfo">${escapeHtml(item.subInfo)}</span>` : ""}
+            ${isRecent ? '<span class="new-tag">NEW</span>' : ""}
+          </div>
+
+          <div class="record-time">${formatTime(item.totalMs)}</div>
+
+          ${
+            state.isAdminMode
+              ? `<div class="row-actions">
+                  <button type="button" class="btn btn-ghost" data-action="edit" data-id="${escapeAttr(item.id)}">수정</button>
+                  <button type="button" class="btn btn-danger-ghost" data-action="delete" data-id="${escapeAttr(item.id)}">삭제</button>
+                </div>`
+              : ""
+          }
+        </div>
+      `;
+    }
+
+    function renderBoard() {
+      const query = dom.searchInput.value.trim().toLowerCase();
+
+      const sorted = [...state.records]
+        .filter((item) => item && item.entryType !== "team")
+        .map(normalizeRecord)
+        .sort((a, b) => {
+          if (a.totalMs === b.totalMs) return (a.updatedAt || 0) - (b.updatedAt || 0);
+          return state.sortAscending ? a.totalMs - b.totalMs : b.totalMs - a.totalMs;
+        });
+
+      dom.totalCount.textContent = sorted.length;
+      dom.topRecord.textContent = sorted.length > 0 ? formatTime(sorted[0].totalMs) : "--:--.---";
+
+      const ranked = sorted.map((item, idx) => ({ ...item, rank: idx + 1 }));
+      const filtered = query
+        ? ranked.filter(
+            (item) =>
+              item.nickname.toLowerCase().includes(query) ||
+              item.studentId.toLowerCase().includes(query) ||
+              item.realName.toLowerCase().includes(query) ||
+              item.subInfo.toLowerCase().includes(query)
+          )
+        : ranked;
+
+      if (filtered.length === 0) {
+        dom.pinnedTopList.classList.remove("has-flow-below");
+        dom.pinnedTopList.innerHTML = `
+          <div class="empty-state">
+            <p>${query ? "검색 결과와 일치하는 참가자가 없습니다." : "아직 등록된 개인 기록이 없습니다."}</p>
+            <span>${state.isAdminMode ? "상단 입력 폼에서 닉네임과 시간 기록을 등록해보세요. (익명 참여 시 상품 수령 불가)" : "관리자 모드에서 기록을 입력하면 이곳에 실시간으로 표시됩니다."}</span>
+          </div>
+        `;
+        dom.rankListPrimary.innerHTML = "";
+        dom.rankListClone.innerHTML = "";
+        dom.rankListClone.style.display = "none";
+        resetTickerOffset();
+        return;
       }
-    }
 
-    // 수정 모달 개인 / 팀 전환
-    function setEditEntryType(type) {
-      editEntryType = type;
-      const indBtn = document.getElementById("editTypeIndividualBtn");
-      const teamBtn = document.getElementById("editTypeTeamBtn");
-      const nameLabel = document.getElementById("editPrimaryNameLabel");
-      const nameInput = document.getElementById("editPrimaryName");
-      const membersField = document.getElementById("editMembersField");
-      const membersInput = document.getElementById("editTeamMembers");
+      const now = Date.now();
+      const pinnedItems = filtered.filter((item) => item.rank <= 3);
+      const flowItems = filtered.filter((item) => item.rank > 3);
 
-      if (type === "team") {
-        teamBtn.classList.add("active");
-        indBtn.classList.remove("active");
-        nameLabel.textContent = "팀 이름 *";
-        nameInput.placeholder = "예: 브레인스톰";
-        membersField.classList.remove("hidden");
-        membersInput.required = true;
-      } else {
-        indBtn.classList.add("active");
-        teamBtn.classList.remove("active");
-        nameLabel.textContent = "이름 *";
-        nameInput.placeholder = "예: 김민수";
-        membersField.classList.add("hidden");
-        membersInput.required = false;
+      dom.pinnedTopList.innerHTML = pinnedItems.map((item) => createRankRowHtml(item, now)).join("");
+
+      const flowHtml = flowItems.map((item) => createRankRowHtml(item, now)).join("");
+      dom.rankListPrimary.innerHTML = flowHtml;
+      dom.rankListClone.innerHTML = flowHtml;
+
+      const newPrimaryHeight = dom.rankListPrimary.offsetHeight;
+      if (newPrimaryHeight > 0 && state.ticker.offset >= newPrimaryHeight) {
+        state.ticker.offset %= newPrimaryHeight;
+      } else if (newPrimaryHeight === 0) {
+        state.ticker.offset = 0;
       }
+      dom.scrollTrack.style.transform = `translate3d(0, -${state.ticker.offset}px, 0)`;
     }
 
-    // 이벤트 바인딩
-    function bindEvents() {
-      viewerModeBtn.addEventListener("click", () => setAdminMode(false));
+    /* ==========================================================================
+       6. Modals & User Actions
+       ========================================================================== */
+    function openModal(id) {
+      document.getElementById(id)?.classList.add("open");
+    }
 
-      // 관리자 버튼 클릭 시 매번 Password 인증창 호출
-      adminModeBtn.addEventListener("click", () => {
-        requestAdminMode();
-      });
+    function closeModal(id) {
+      document.getElementById(id)?.classList.remove("open");
+    }
 
-      // 보드 내 모든 행(내가 등록한 기록 및 타인이 등록한 모든 기록)의 수정/삭제 버튼 이벤트 위임
-      boardCardEl.addEventListener("click", (e) => {
-        const actionBtn = e.target.closest("button[data-action]");
-        if (!actionBtn || !isAdminMode) return;
+    function openConfirmModal(title, desc, onConfirm) {
+      document.getElementById("confirmTitle").textContent = title;
+      document.getElementById("confirmDesc").textContent = desc;
+      state.pendingConfirmAction = onConfirm;
+      openModal("confirmModal");
+    }
 
-        const action = actionBtn.dataset.action;
-        const id = String(actionBtn.dataset.id || "");
-        if (!id) return;
+    function openPinModal(mode) {
+      state.pinActionMode = mode;
+      const isVerify = mode === "verify";
+      document.getElementById("pinModalTitle").textContent = isVerify
+        ? "관리자 Password 인증"
+        : "새 관리자 Password 설정";
+      document.getElementById("pinModalDesc").innerHTML = isVerify
+        ? "관리자 모드에 들어가려면 클라우드 저장소에 저장된 Password를 입력하세요. (초기 기본값: <strong>1234</strong>)"
+        : "클라우드 저장소에 영구 저장할 새로운 Password(4자리 이상)를 입력하세요.";
 
-        if (action === "edit") {
-          openEditModalById(id);
-        } else if (action === "delete") {
-          deleteRecordById(id);
+      const pinInput = document.getElementById("pinInput");
+      pinInput.value = "";
+      openModal("pinModal");
+      setTimeout(() => pinInput.focus(), 100);
+    }
+
+    function openEditModalById(id) {
+      const raw = state.records.find((r) => String(r.id) === String(id));
+      if (!raw) return showToast("수정할 기록을 찾을 수 없습니다.");
+
+      const target = normalizeRecord(raw);
+      const mins = Math.floor(target.totalMs / 60000);
+      const secs = Math.floor((target.totalMs % 60000) / 1000);
+      const ms = target.totalMs % 1000;
+
+      document.getElementById("editId").value = target.id;
+      document.getElementById("editNickname").value = target.nickname;
+      document.getElementById("editStudentId").value = target.studentId;
+      document.getElementById("editRealName").value = target.realName;
+      document.getElementById("editMin").value = mins;
+      document.getElementById("editSec").value = secs;
+      document.getElementById("editMs").value = String(ms).padStart(3, "0");
+
+      openModal("editModal");
+    }
+
+    function deleteRecordById(id) {
+      const raw = state.records.find((r) => String(r.id) === String(id));
+      if (!raw) return showToast("삭제할 기록을 찾을 수 없습니다.");
+
+      const target = normalizeRecord(raw);
+      const label = target.subInfo ? `${target.nickname} (${target.subInfo})` : target.nickname;
+
+      openConfirmModal(
+        "기록 삭제 확인",
+        `'${label}' 기록을 삭제하시겠습니까?`,
+        () => {
+          if (state.dbRef) {
+            state.dbRef.child(String(target.id)).remove()
+              .then(() => showToast(`🗑️ '${label}' 기록이 삭제되었습니다.`))
+              .catch((err) => {
+                console.error("기록 삭제 오류:", err);
+                showToast("❌ 삭제 권한 오류: Firebase 규칙(.write: true)을 확인하세요.");
+              });
+          } else {
+            state.records = state.records.filter((r) => String(r.id) !== String(target.id));
+            saveLocalRecords();
+            renderBoard();
+            showToast(`🗑️ '${label}' 기록이 삭제되었습니다.`);
+          }
         }
-      });
+      );
+    }
 
-      // 마우스 올리거나 터치 시 흐름 일시 정지
-      scrollViewportEl.addEventListener("mouseenter", () => { isHoverPaused = true; });
-      scrollViewportEl.addEventListener("mouseleave", () => { isHoverPaused = false; });
-      scrollViewportEl.addEventListener("touchstart", () => { isHoverPaused = true; }, { passive: true });
-      scrollViewportEl.addEventListener("touchend", () => {
-        setTimeout(() => { isHoverPaused = false; }, 1200);
-      }, { passive: true });
+    let toastTimer = null;
+    function showToast(msg) {
+      dom.toast.textContent = msg;
+      dom.toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => dom.toast.classList.remove("show"), 3000);
+    }
 
-      // 흐름 애니메이션 ON/OFF 버튼
-      document.getElementById("flowToggleBtn").addEventListener("click", () => {
-        isAutoScrollEnabled = !isAutoScrollEnabled;
-        const btn = document.getElementById("flowToggleBtn");
-        const txt = document.getElementById("flowToggleText");
-        btn.classList.toggle("active", isAutoScrollEnabled);
-        txt.textContent = isAutoScrollEnabled ? "ON" : "OFF";
-      });
+    /* ==========================================================================
+       7. Event Listeners (PC Tab 키 이동 & 스크롤 모드 포함)
+       ========================================================================== */
+    function bindTimeInputKeyboardNavigation() {
+      document.querySelectorAll(".time-part").forEach((input) => {
+        // 포커스 시 기존 값 전체 선택하여 바로 덮어쓰기 가능
+        input.addEventListener("focus", () => {
+          if (input.value) input.select();
+        });
 
-      // 전체 / 개인 / 팀 랭킹 선택 메뉴
-      document.querySelectorAll(".cat-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          document.querySelectorAll(".cat-btn").forEach((b) => b.classList.remove("active"));
-          btn.classList.add("active");
-          currentFilter = btn.dataset.filter;
-          scrollOffset = 0;
-          scrollTrackEl.style.transform = "translate3d(0, 0, 0)";
-          renderBoard();
+        // PC에서 Tab / Shift+Tab 및 ':' / '.' 입력 시 분 -> 초 -> 밀리초 즉시 이동
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Tab") {
+            const targetId = e.shiftKey ? input.dataset.prev : input.dataset.next;
+            const targetEl = targetId ? document.getElementById(targetId) : null;
+            if (targetEl) {
+              e.preventDefault();
+              targetEl.focus();
+            }
+          } else if (e.key === ":" || e.key === ".") {
+            const nextEl = input.dataset.next ? document.getElementById(input.dataset.next) : null;
+            if (nextEl && nextEl.classList.contains("time-part")) {
+              e.preventDefault();
+              nextEl.focus();
+            }
+          }
         });
       });
+    }
 
-      // 등록 폼 개인/팀 토글
-      document.getElementById("typeIndividualBtn").addEventListener("click", () => setFormEntryType("individual"));
-      document.getElementById("typeTeamBtn").addEventListener("click", () => setFormEntryType("team"));
+    function bindEvents() {
+      bindTimeInputKeyboardNavigation();
 
-      // 수정 모달 개인/팀 토글
-      document.getElementById("editTypeIndividualBtn").addEventListener("click", () => setEditEntryType("individual"));
-      document.getElementById("editTypeTeamBtn").addEventListener("click", () => setEditEntryType("team"));
+      // 전광판 / 관리자 모드 전환 (관리자 진입 시 매번 Password 요구)
+      dom.viewerModeBtn.addEventListener("click", () => setAdminMode(false));
+      dom.adminModeBtn.addEventListener("click", () => openPinModal("verify"));
 
-      // 신규 기록 등록
+      // 자동 흐름 / 수동 스크롤 모드 전환
+      dom.autoScrollModeBtn.addEventListener("click", () => setScrollMode(true));
+      dom.manualScrollModeBtn.addEventListener("click", () => setScrollMode(false));
+
+      // 보드 내 모든 행의 수정/삭제 이벤트 위임
+      dom.boardCard.addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-action]");
+        if (!btn || !state.isAdminMode) return;
+
+        const { action, id } = btn.dataset;
+        if (!id) return;
+        if (action === "edit") openEditModalById(id);
+        if (action === "delete") deleteRecordById(id);
+      });
+
+      // 모달 닫기 (버튼, 배경 클릭, ESC 키)
+      document.addEventListener("click", (e) => {
+        const closeTarget = e.target.closest("[data-close-modal]");
+        if (closeTarget) {
+          closeModal(closeTarget.dataset.closeModal);
+          return;
+        }
+        if (e.target.classList.contains("modal-backdrop")) {
+          e.target.classList.remove("open");
+        }
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          document.querySelectorAll(".modal-backdrop.open").forEach((m) => m.classList.remove("open"));
+        }
+      });
+
+      // 자동 흐름 모드일 때 마우스 오버/터치 시 일시 정지
+      dom.scrollViewport.addEventListener("mouseenter", () => { state.ticker.paused = true; });
+      dom.scrollViewport.addEventListener("mouseleave", () => { state.ticker.paused = false; });
+      dom.scrollViewport.addEventListener("touchstart", () => { state.ticker.paused = true; }, { passive: true });
+      dom.scrollViewport.addEventListener("touchend", () => {
+        setTimeout(() => { state.ticker.paused = false; }, 1200);
+      }, { passive: true });
+
+      // 신규 개인 기록 등록 (학번·이름은 선택 입력)
       document.getElementById("recordForm").addEventListener("submit", (e) => {
         e.preventDefault();
-        const name = document.getElementById("primaryName").value.trim();
-        const members = currentEntryType === "team"
-          ? document.getElementById("teamMembers").value.trim()
-          : "";
+        const nickname = document.getElementById("nicknameInput").value.trim();
+        const studentId = document.getElementById("studentIdInput").value.trim();
+        const realName = document.getElementById("realNameInput").value.trim();
         const totalMs = parseTimeInputs("minInput", "secInput", "msInput");
 
-        if (!name) {
-          return showToast(currentEntryType === "team" ? "팀 이름을 입력해주세요." : "이름을 입력해주세요.");
-        }
-        if (currentEntryType === "team" && !members) {
-          return showToast("조원 이름을 입력해주세요.");
-        }
-        if (totalMs <= 0) {
-          return showToast("0초보다 큰 시간 기록을 입력해주세요.");
-        }
+        if (!nickname) return showToast("닉네임을 입력해주세요.");
+        if (totalMs <= 0) return showToast("0초보다 큰 시간 기록을 입력해주세요.");
+
+        const subInfo = [studentId, realName].filter(Boolean).join(" ");
+        const displayLabel = subInfo ? `${nickname} (${subInfo})` : nickname;
 
         const newItem = {
-          entryType: currentEntryType,
-          name,
-          members,
+          entryType: "individual",
+          nickname,
+          studentId,
+          realName,
           totalMs,
           updatedAt: Date.now()
         };
 
-        const labelText = currentEntryType === "team" ? `${name} 팀` : `${name}님`;
-
-        if (dbRef) {
-          dbRef.push(newItem)
-            .then(() => showToast(`✅ ${labelText}의 기록이 등록되었습니다.`))
+        if (state.dbRef) {
+          state.dbRef.push(newItem)
+            .then(() => showToast(`✅ ${displayLabel}님의 기록이 등록되었습니다.`))
             .catch(() => showToast("저장 중 오류가 발생했습니다. DB 권한 규칙을 확인하세요."));
         } else {
-          records.push({ id: "rec_" + Date.now(), ...newItem });
+          state.records.push({ id: `rec_${Date.now()}`, ...newItem });
           saveLocalRecords();
           renderBoard();
-          showToast(`✅ ${labelText}의 기록이 등록되었습니다.`);
+          showToast(`✅ ${displayLabel}님의 기록이 등록되었습니다.`);
         }
 
-        const keepType = currentEntryType;
         e.target.reset();
-        setFormEntryType(keepType);
-        document.getElementById("primaryName").focus();
+        document.getElementById("nicknameInput").focus();
       });
 
-      // 기록 수정 저장 (모든 기록 대상)
+      // 기록 수정 저장 (학번·이름은 선택 입력)
       document.getElementById("editForm").addEventListener("submit", (e) => {
         e.preventDefault();
         const id = String(document.getElementById("editId").value || "");
-        const name = document.getElementById("editPrimaryName").value.trim();
-        const members = editEntryType === "team"
-          ? document.getElementById("editTeamMembers").value.trim()
-          : "";
+        const nickname = document.getElementById("editNickname").value.trim();
+        const studentId = document.getElementById("editStudentId").value.trim();
+        const realName = document.getElementById("editRealName").value.trim();
         const totalMs = parseTimeInputs("editMin", "editSec", "editMs");
 
-        if (!id || !name || totalMs <= 0) {
-          return showToast("올바른 이름과 시간 기록을 입력해주세요.");
-        }
-        if (editEntryType === "team" && !members) {
-          return showToast("조원 이름을 입력해주세요.");
+        if (!id || !nickname || totalMs <= 0) {
+          return showToast("닉네임과 시간 기록을 올바르게 입력해주세요.");
         }
 
         const updatedData = {
-          entryType: editEntryType,
-          name,
-          members,
+          entryType: "individual",
+          nickname,
+          studentId,
+          realName,
           totalMs,
           updatedAt: Date.now()
         };
 
-        if (dbRef) {
-          dbRef.child(id).update(updatedData)
+        if (state.dbRef) {
+          state.dbRef.child(id).update(updatedData)
             .then(() => showToast("✏️ 기록이 수정되었습니다."))
             .catch((err) => {
               console.error("기록 수정 오류:", err);
               showToast("❌ 수정 권한 오류: Firebase 규칙(.write: true)을 확인하세요.");
             });
         } else {
-          const idx = records.findIndex((r) => String(r.id) === id);
+          const idx = state.records.findIndex((r) => String(r.id) === id);
           if (idx !== -1) {
-            records[idx] = { ...records[idx], ...updatedData };
+            state.records[idx] = { ...state.records[idx], ...updatedData };
             saveLocalRecords();
             renderBoard();
             showToast("✏️ 기록이 수정되었습니다.");
@@ -1717,51 +1860,43 @@
       });
 
       // 정렬 기준 전환
-      document.getElementById("sortOrderBtn").addEventListener("click", () => {
-        sortAscending = !sortAscending;
-        localStorage.setItem(STORAGE_KEYS.SORT, String(sortAscending));
+      dom.sortOrderBtn.addEventListener("click", () => {
+        state.sortAscending = !state.sortAscending;
+        localStorage.setItem(STORAGE_KEYS.SORT, String(state.sortAscending));
         updateSortButtonUI();
         renderBoard();
       });
 
-      // Password 변경 모달 열기
-      document.getElementById("changePinBtn").addEventListener("click", () => {
-        pinActionMode = "change";
-        document.getElementById("pinModalTitle").textContent = "새 관리자 Password 설정";
-        document.getElementById("pinModalDesc").textContent =
-          "클라우드 저장소에 영구 저장할 새로운 Password(4자리 이상)를 입력하세요.";
-        document.getElementById("pinInput").value = "";
-        openModal("pinModal");
-        setTimeout(() => document.getElementById("pinInput").focus(), 100);
-      });
+      // Password 변경 및 인증 처리
+      document.getElementById("changePinBtn").addEventListener("click", () => openPinModal("change"));
 
-      // Password 확인 및 클라우드 저장소 저장 처리
       document.getElementById("pinForm").addEventListener("submit", async (e) => {
         e.preventDefault();
-        const entered = document.getElementById("pinInput").value.trim();
+        const pinInput = document.getElementById("pinInput");
+        const entered = pinInput.value.trim();
 
-        if (pinActionMode === "verify") {
-          if (pinRef) {
+        if (state.pinActionMode === "verify") {
+          if (state.pinRef) {
             try {
-              const snap = await pinRef.once("value");
+              const snap = await state.pinRef.once("value");
               const latestPin = snap.val();
               if (latestPin !== null && latestPin !== undefined && String(latestPin).trim() !== "") {
-                currentAdminPin = String(latestPin).trim();
-                localStorage.setItem(STORAGE_KEYS.PIN, currentAdminPin);
+                state.adminPin = String(latestPin).trim();
+                localStorage.setItem(STORAGE_KEYS.PIN, state.adminPin);
               }
             } catch (err) {
               console.warn("최신 Password 조회 실패, 캐시된 값 사용:", err);
             }
           }
 
-          if (entered === currentAdminPin) {
-            document.getElementById("pinInput").value = "";
+          if (entered === state.adminPin) {
+            pinInput.value = "";
             closeModal("pinModal");
             setAdminMode(true);
             showToast("🎛 관리자 모드가 활성화되었습니다.");
           } else {
-            document.getElementById("pinInput").value = "";
-            document.getElementById("pinInput").focus();
+            pinInput.value = "";
+            pinInput.focus();
             showToast("❌ Password가 일치하지 않습니다.");
           }
         } else {
@@ -1769,12 +1904,12 @@
             return showToast("Password는 4자리 이상으로 설정해주세요.");
           }
 
-          if (pinRef) {
+          if (state.pinRef) {
             try {
-              await pinRef.set(entered);
-              currentAdminPin = entered;
+              await state.pinRef.set(entered);
+              state.adminPin = entered;
               localStorage.setItem(STORAGE_KEYS.PIN, entered);
-              document.getElementById("pinInput").value = "";
+              pinInput.value = "";
               closeModal("pinModal");
               showToast("🔒 새 Password가 클라우드 저장소에 저장되었습니다.");
             } catch (err) {
@@ -1782,25 +1917,25 @@
               showToast("❌ 저장소 쓰기 권한 오류: Firebase 규칙(.write: true)을 확인해주세요.");
             }
           } else {
-            currentAdminPin = entered;
+            state.adminPin = entered;
             localStorage.setItem(STORAGE_KEYS.PIN, entered);
-            document.getElementById("pinInput").value = "";
+            pinInput.value = "";
             closeModal("pinModal");
             showToast("🔒 로컬 모드에 새 Password가 저장되었습니다.");
           }
         }
       });
 
-      // 전체 초기화
+      // 전체 기록 초기화
       document.getElementById("clearAllBtn").addEventListener("click", () => {
         openConfirmModal(
           "전체 기록 초기화",
           "등록된 모든 순위 데이터가 영구 삭제됩니다. 계속하시겠습니까?",
           () => {
-            if (dbRef) {
-              dbRef.remove().then(() => showToast("🗑️ 모든 클라우드 기록이 초기화되었습니다."));
+            if (state.dbRef) {
+              state.dbRef.remove().then(() => showToast("🗑️ 모든 클라우드 기록이 초기화되었습니다."));
             } else {
-              records = [];
+              state.records = [];
               saveLocalRecords();
               renderBoard();
               showToast("🗑️ 모든 기록이 초기화되었습니다.");
@@ -1809,13 +1944,13 @@
         );
       });
 
-      // 클라우드 설정 모달
-      document.getElementById("syncStatusBtn").addEventListener("click", () => {
+      // 클라우드 DB 설정 모달
+      dom.syncStatusBtn.addEventListener("click", () => {
         const savedCloud = JSON.parse(localStorage.getItem(STORAGE_KEYS.CLOUD) || "null");
         document.getElementById("fbDbUrl").value = sanitizeFirebaseUrl(
-          (savedCloud && savedCloud.databaseURL) || DEFAULT_FIREBASE_CONFIG.databaseURL || ""
+          savedCloud?.databaseURL || DEFAULT_FIREBASE_CONFIG.databaseURL || ""
         );
-        document.getElementById("fbApiKey").value = (savedCloud && savedCloud.apiKey) || DEFAULT_FIREBASE_CONFIG.apiKey || "";
+        document.getElementById("fbApiKey").value = savedCloud?.apiKey || DEFAULT_FIREBASE_CONFIG.apiKey || "";
         openModal("cloudModal");
       });
 
@@ -1824,9 +1959,7 @@
         const databaseURL = sanitizeFirebaseUrl(document.getElementById("fbDbUrl").value);
         const apiKey = document.getElementById("fbApiKey").value.trim();
 
-        if (!databaseURL) {
-          return showToast("Firebase Database URL을 입력해주세요.");
-        }
+        if (!databaseURL) return showToast("Firebase Database URL을 입력해주세요.");
 
         const config = { databaseURL, apiKey };
         localStorage.setItem(STORAGE_KEYS.CLOUD, JSON.stringify(config));
@@ -1842,310 +1975,34 @@
         showToast("클라우드 연결이 해제되었습니다.");
       });
 
-      // 검색 필터
-      searchInputEl.addEventListener("input", () => {
-        scrollOffset = 0;
-        scrollTrackEl.style.transform = "translate3d(0, 0, 0)";
+      // 검색 필터 및 삭제 확인
+      dom.searchInput.addEventListener("input", () => {
+        resetTickerOffset();
         renderBoard();
       });
 
-      // 삭제 확인 버튼
       document.getElementById("confirmYesBtn").addEventListener("click", () => {
-        if (typeof pendingConfirmAction === "function") {
-          pendingConfirmAction();
+        if (typeof state.pendingConfirmAction === "function") {
+          state.pendingConfirmAction();
         }
         closeModal("confirmModal");
       });
     }
 
-    // 관리자 모드 진입 시 항상 Password 요구
-    function requestAdminMode() {
-      pinActionMode = "verify";
-      document.getElementById("pinModalTitle").textContent = "관리자 Password 인증";
-      document.getElementById("pinModalDesc").innerHTML =
-        "관리자 모드에 들어가려면 클라우드 저장소에 저장된 Password를 입력하세요. (초기 기본값: <strong>1234</strong>)";
-      document.getElementById("pinInput").value = "";
-      openModal("pinModal");
-      setTimeout(() => document.getElementById("pinInput").focus(), 100);
-    }
+    /* ==========================================================================
+       8. Bootstrap
+       ========================================================================== */
+    document.addEventListener("DOMContentLoaded", () => {
+      updateSortButtonUI();
+      setScrollMode(true);
+      initDataSource();
+      bindEvents();
+      startTickerLoop();
 
-    function setAdminMode(enable) {
-      isAdminMode = enable;
-      if (enable) {
-        adminModeBtn.classList.add("active");
-        viewerModeBtn.classList.remove("active");
-        adminPanelEl.classList.add("visible");
-        boardHeaderEl.classList.remove("viewer-only");
-        actionHeaderEl.style.display = "block";
-        scrollViewportEl.classList.add("manual-scroll");
-      } else {
-        viewerModeBtn.classList.add("active");
-        adminModeBtn.classList.remove("active");
-        adminPanelEl.classList.remove("visible");
-        boardHeaderEl.classList.add("viewer-only");
-        actionHeaderEl.style.display = "none";
-        scrollViewportEl.classList.remove("manual-scroll");
+      if (new URLSearchParams(window.location.search).get("mode") === "admin") {
+        openPinModal("verify");
       }
-      renderBoard();
-    }
-
-    function updateSortButtonUI() {
-      const btn = document.getElementById("sortOrderBtn");
-      btn.textContent = sortAscending ? "기준: 최단 시간순 ↑" : "기준: 최장 시간순 ↓";
-    }
-
-    // 시간 파싱 및 포맷팅
-    function parseTimeInputs(minId, secId, msId) {
-      const mins = Math.max(0, parseInt(document.getElementById(minId).value || "0", 10));
-      const secs = Math.max(0, parseInt(document.getElementById(secId).value || "0", 10));
-      const msRaw = (document.getElementById(msId).value || "0").trim();
-      const ms = msRaw.length === 2
-        ? parseInt(msRaw, 10) * 10
-        : Math.min(999, Math.max(0, parseInt(msRaw || "0", 10)));
-
-      return (mins * 60 * 1000) + (secs * 1000) + ms;
-    }
-
-    function formatTime(totalMs) {
-      const safeMs = Math.max(0, Number(totalMs) || 0);
-      const mins = Math.floor(safeMs / 60000);
-      const secs = Math.floor((safeMs % 60000) / 1000);
-      const ms = safeMs % 1000;
-
-      const mm = String(mins).padStart(2, "0");
-      const ss = String(secs).padStart(2, "0");
-      const mmm = String(ms).padStart(3, "0");
-      return `${mm}:${ss}.${mmm}`;
-    }
-
-    // 레코드 정규화 (다른 기기·기존 형식 기록도 모두 호환)
-    function normalizeRecord(item) {
-      const isTeam = item.entryType === "team";
-      const members = isTeam
-        ? (item.members || (item.team && item.team !== "-" ? item.team : ""))
-        : "";
-      return {
-        ...item,
-        id: String(item.id),
-        totalMs: Number(item.totalMs) || 0,
-        isTeam,
-        displayName: item.name || "(이름 없음)",
-        displayMembers: members
-      };
-    }
-
-    // 행 HTML 생성 헬퍼
-    function createRankRowHtml(item, now) {
-      const topClass = item.rank <= 3 ? `top-${item.rank}` : "";
-      const rankIcon = item.rank === 1 ? "👑" : item.rank === 2 ? "🥈" : item.rank === 3 ? "🥉" : item.rank;
-      const isRecent = item.updatedAt && now - item.updatedAt < 60000;
-
-      const nameBlockHtml = item.isTeam
-        ? `<span class="player-name">${escapeHtml(item.displayName)}</span>
-           ${item.displayMembers ? `<span class="team-members-inline">${escapeHtml(item.displayMembers)}</span>` : ""}`
-        : `<span class="player-name">${escapeHtml(item.displayName)}</span>`;
-
-      return `
-        <div class="rank-row ${topClass} ${isAdminMode ? "" : "viewer-only"}">
-          <div>
-            <div class="rank-badge">${rankIcon}</div>
-          </div>
-
-          <div>
-            <span class="kind-badge ${item.isTeam ? "team" : "individual"}">
-              ${item.isTeam ? "팀" : "개인"}
-            </span>
-          </div>
-
-          <div class="player-info">
-            ${nameBlockHtml}
-            ${isRecent ? '<span class="new-tag">NEW</span>' : ""}
-          </div>
-
-          <div class="record-time">${formatTime(item.totalMs)}</div>
-
-          ${
-            isAdminMode
-              ? `<div class="row-actions">
-                  <button type="button" class="btn btn-ghost" data-action="edit" data-id="${escapeAttr(item.id)}">수정</button>
-                  <button type="button" class="btn btn-danger-ghost" data-action="delete" data-id="${escapeAttr(item.id)}">삭제</button>
-                </div>`
-              : ""
-          }
-        </div>
-      `;
-    }
-
-    // 랭킹 보드 렌더링 (1~3위 고정 + 4위 이하 흐름 애니메이션)
-    function renderBoard() {
-      const query = searchInputEl.value.trim().toLowerCase();
-      const allNormalized = [...records].map(normalizeRecord);
-
-      const indCount = allNormalized.filter((r) => !r.isTeam).length;
-      const teamCount = allNormalized.filter((r) => r.isTeam).length;
-      document.getElementById("countAll").textContent = allNormalized.length;
-      document.getElementById("countIndividual").textContent = indCount;
-      document.getElementById("countTeam").textContent = teamCount;
-
-      const categorized = allNormalized
-        .filter((item) => {
-          if (currentFilter === "individual") return !item.isTeam;
-          if (currentFilter === "team") return item.isTeam;
-          return true;
-        })
-        .sort((a, b) => {
-          if (a.totalMs === b.totalMs) {
-            return (a.updatedAt || 0) - (b.updatedAt || 0);
-          }
-          return sortAscending ? a.totalMs - b.totalMs : b.totalMs - a.totalMs;
-        });
-
-      document.getElementById("topRecord").textContent = categorized.length > 0
-        ? formatTime(categorized[0].totalMs)
-        : "--:--.---";
-
-      const rankedWithIndex = categorized.map((item, idx) => ({
-        ...item,
-        rank: idx + 1
-      }));
-
-      const filtered = query
-        ? rankedWithIndex.filter(
-            (item) =>
-              item.displayName.toLowerCase().includes(query) ||
-              (item.displayMembers && item.displayMembers.toLowerCase().includes(query))
-          )
-        : rankedWithIndex;
-
-      if (filtered.length === 0) {
-        pinnedTopListEl.classList.remove("has-flow-below");
-        pinnedTopListEl.innerHTML = `
-          <div class="empty-state">
-            <p>${query ? "검색 결과와 일치하는 참가자 또는 팀이 없습니다." : "아직 등록된 시간 기록이 없습니다."}</p>
-            <span>${isAdminMode ? "상단 입력 폼에서 기록을 등록해보세요." : "관리자 모드에서 기록을 입력하면 이곳에 실시간으로 표시됩니다."}</span>
-          </div>
-        `;
-        rankListPrimaryEl.innerHTML = "";
-        rankListCloneEl.innerHTML = "";
-        rankListCloneEl.style.display = "none";
-        scrollOffset = 0;
-        scrollTrackEl.style.transform = "translate3d(0, 0, 0)";
-        return;
-      }
-
-      const now = Date.now();
-      const pinnedItems = filtered.filter((item) => item.rank <= 3);
-      const flowItems = filtered.filter((item) => item.rank > 3);
-
-      pinnedTopListEl.innerHTML = pinnedItems.map((item) => createRankRowHtml(item, now)).join("");
-
-      const flowHtml = flowItems.map((item) => createRankRowHtml(item, now)).join("");
-      rankListPrimaryEl.innerHTML = flowHtml;
-      rankListCloneEl.innerHTML = flowHtml;
-
-      const newPrimaryHeight = rankListPrimaryEl.offsetHeight;
-      if (newPrimaryHeight > 0 && scrollOffset >= newPrimaryHeight) {
-        scrollOffset = scrollOffset % newPrimaryHeight;
-      } else if (newPrimaryHeight === 0) {
-        scrollOffset = 0;
-      }
-      scrollTrackEl.style.transform = `translate3d(0, -${scrollOffset}px, 0)`;
-    }
-
-    // 모든 기록(타 기기 등록 기록 포함) 수정 모달 열기
-    function openEditModalById(id) {
-      const raw = records.find((r) => String(r.id) === String(id));
-      if (!raw) {
-        return showToast("수정할 기록을 찾을 수 없습니다.");
-      }
-      const target = normalizeRecord(raw);
-
-      const mins = Math.floor(target.totalMs / 60000);
-      const secs = Math.floor((target.totalMs % 60000) / 1000);
-      const ms = target.totalMs % 1000;
-
-      setEditEntryType(target.isTeam ? "team" : "individual");
-      document.getElementById("editId").value = target.id;
-      document.getElementById("editPrimaryName").value = target.displayName;
-      document.getElementById("editTeamMembers").value = target.displayMembers || "";
-      document.getElementById("editMin").value = mins;
-      document.getElementById("editSec").value = secs;
-      document.getElementById("editMs").value = String(ms).padStart(3, "0");
-
-      openModal("editModal");
-    }
-
-    // 모든 기록(타 기기 등록 기록 포함) 삭제 확인 및 실행
-    function deleteRecordById(id) {
-      const raw = records.find((r) => String(r.id) === String(id));
-      if (!raw) {
-        return showToast("삭제할 기록을 찾을 수 없습니다.");
-      }
-      const target = normalizeRecord(raw);
-
-      openConfirmModal(
-        "기록 삭제 확인",
-        `'${target.displayName}' 기록을 삭제하시겠습니까?`,
-        () => {
-          if (dbRef) {
-            dbRef.child(String(target.id)).remove()
-              .then(() => showToast(`🗑️ '${target.displayName}' 기록이 삭제되었습니다.`))
-              .catch((err) => {
-                console.error("기록 삭제 오류:", err);
-                showToast("❌ 삭제 권한 오류: Firebase 규칙(.write: true)을 확인하세요.");
-              });
-          } else {
-            records = records.filter((r) => String(r.id) !== String(target.id));
-            saveLocalRecords();
-            renderBoard();
-            showToast(`🗑️ '${target.displayName}' 기록이 삭제되었습니다.`);
-          }
-        }
-      );
-    }
-
-    // 모달 제어
-    function openModal(id) {
-      document.getElementById(id).classList.add("open");
-    }
-
-    window.closeModal = function (id) {
-      document.getElementById(id).classList.remove("open");
-    };
-
-    function openConfirmModal(title, desc, onConfirm) {
-      document.getElementById("confirmTitle").textContent = title;
-      document.getElementById("confirmDesc").textContent = desc;
-      pendingConfirmAction = onConfirm;
-      openModal("confirmModal");
-    }
-
-    // 토스트 알림
-    let toastTimer = null;
-    function showToast(msg) {
-      const toast = document.getElementById("toast");
-      toast.textContent = msg;
-      toast.classList.add("show");
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => toast.classList.remove("show"), 3000);
-    }
-
-    // 보안 이스케이프
-    function escapeHtml(str) {
-      return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-    }
-
-    function escapeAttr(str) {
-      return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-    }
+    });
   </script>
 </body>
 </html>
