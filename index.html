@@ -845,18 +845,52 @@
     }
 
     .rank-toast-badge {
-      width: 46px;
-      height: 46px;
+      min-width: 58px;
+      height: 48px;
+      padding: 0 10px;
       border-radius: 12px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
+      white-space: nowrap;
       background: rgba(56, 189, 248, 0.16);
       border: 1px solid rgba(56, 189, 248, 0.35);
       color: var(--accent);
-      line-height: 1.1;
+      line-height: 1.15;
+    }
+
+    .rank-toast.top-1 .rank-toast-badge {
+      background: var(--gold-bg);
+      border-color: var(--gold-border);
+      color: var(--gold);
+    }
+
+    .rank-toast.top-2 .rank-toast-badge {
+      background: var(--silver-bg);
+      border-color: var(--silver-border);
+      color: var(--silver);
+    }
+
+    .rank-toast.top-3 .rank-toast-badge {
+      background: var(--bronze-bg);
+      border-color: var(--bronze-border);
+      color: var(--bronze);
+    }
+
+    .rank-toast-num {
+      font-size: 1.05rem;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .rank-toast-label {
+      font-size: 0.62rem;
+      font-weight: 700;
+      opacity: 0.9;
+      margin-top: 2px;
     }
 
     .rank-toast.top-1 .rank-toast-badge {
