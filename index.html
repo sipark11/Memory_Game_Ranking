@@ -801,6 +801,147 @@
       gap: 8px;
     }
 
+    /* 좌측 하단 등록 순위 미니 알림 토스트 */
+    .rank-toast {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      z-index: 210;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 260px;
+      max-width: min(360px, calc(100vw - 40px));
+      padding: 12px 15px;
+      border-radius: 14px;
+      background: rgba(15, 19, 44, 0.94);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-accent);
+      box-shadow: 0 16px 38px rgba(0, 0, 0, 0.6);
+      transform: translateY(140%);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease;
+    }
+
+    .rank-toast.show {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .rank-toast.top-1 {
+      border-color: var(--gold-border);
+      box-shadow: 0 16px 38px rgba(250, 204, 21, 0.22);
+    }
+
+    .rank-toast.top-2 {
+      border-color: var(--silver-border);
+    }
+
+    .rank-toast.top-3 {
+      border-color: var(--bronze-border);
+    }
+
+    .rank-toast-badge {
+      width: 46px;
+      height: 46px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      background: rgba(56, 189, 248, 0.16);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      color: var(--accent);
+      line-height: 1.1;
+    }
+
+    .rank-toast.top-1 .rank-toast-badge {
+      background: var(--gold-bg);
+      border-color: var(--gold-border);
+      color: var(--gold);
+    }
+
+    .rank-toast.top-2 .rank-toast-badge {
+      background: var(--silver-bg);
+      border-color: var(--silver-border);
+      color: var(--silver);
+    }
+
+    .rank-toast.top-3 .rank-toast-badge {
+      background: var(--bronze-bg);
+      border-color: var(--bronze-border);
+      color: var(--bronze);
+    }
+
+    .rank-toast-num {
+      font-size: 1.12rem;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .rank-toast-label {
+      font-size: 0.62rem;
+      font-weight: 700;
+      opacity: 0.9;
+    }
+
+    .rank-toast-body {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .rank-toast-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .rank-toast.top-1 .rank-toast-title { color: var(--gold); }
+
+    .rank-toast-player {
+      font-size: 0.9rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .rank-toast-sub {
+      font-size: 0.76rem;
+      color: var(--text-secondary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .rank-toast-sub strong {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: var(--text-primary);
+    }
+
+    .rank-toast-close {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      cursor: pointer;
+      padding: 4px;
+      line-height: 1;
+      border-radius: 6px;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .rank-toast-close:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
     .code-hint {
       background: #080b12;
       border: 1px solid var(--border-subtle);
@@ -1193,6 +1334,22 @@
         <button type="button" class="btn btn-danger-ghost" id="confirmYesBtn">삭제하기</button>
       </div>
     </div>
+  </div>
+
+  <!-- 좌측 하단 기록 등록 및 현재 순위 미니 알림 -->
+  <div class="rank-toast" id="rankToast" role="status" aria-live="polite">
+    <div class="rank-toast-badge">
+      <span class="rank-toast-num" id="rankToastNumber">1위</span>
+      <span class="rank-toast-label" id="rankToastTag">TOP</span>
+    </div>
+    <div class="rank-toast-body">
+      <div class="rank-toast-title" id="rankToastTitle">🎉 기록 등록 완료</div>
+      <div class="rank-toast-player" id="rankToastPlayer">메모리 왕</div>
+      <div class="rank-toast-sub">
+        <strong id="rankToastTime">00:42.350</strong> · <span id="rankToastTotal">전체 1명 중 1위</span>
+      </div>
+    </div>
+    <button type="button" class="rank-toast-close" id="rankToastCloseBtn" aria-label="알림 닫기">✕</button>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -1696,6 +1853,79 @@
       );
     }
 
+    function showRankResultModal(newItem, savedId = null) {
+      // 방금 등록된 항목을 포함한 전체 개인 기록 정렬 후 현재 순위 계산
+      const candidateList = [...state.records]
+        .filter((item) => item && item.entryType !== "team")
+        .map(normalizeRecord);
+
+      const targetId = savedId ? String(savedId) : "__temp_new__";
+      const existsInState = savedId && candidateList.some((r) => String(r.id) === targetId);
+
+      if (!existsInState) {
+        candidateList.push(normalizeRecord({ id: targetId, ...newItem }));
+      }
+
+      candidateList.sort((a, b) => {
+        if (a.totalMs === b.totalMs) return (a.updatedAt || 0) - (b.updatedAt || 0);
+        return state.sortAscending ? a.totalMs - b.totalMs : b.totalMs - a.totalMs;
+      });
+
+      const foundIdx = candidateList.findIndex((r) => String(r.id) === targetId);
+      const currentRank = foundIdx !== -1 ? foundIdx + 1 : 1;
+      const totalPlayers = candidateList.length;
+
+      const subInfo = [newItem.studentId, newItem.realName].filter(Boolean).join(" ");
+      const displayLabel = subInfo ? `${newItem.nickname} (${subInfo})` : newItem.nickname;
+
+      showRankToast({
+        rank: currentRank,
+        total: totalPlayers,
+        player: displayLabel,
+        timeText: formatTime(newItem.totalMs)
+      });
+    }
+
+    let rankToastTimer = null;
+    function showRankToast({ rank, total, player, timeText }) {
+      const toastEl = document.getElementById("rankToast");
+      const numEl = document.getElementById("rankToastNumber");
+      const tagEl = document.getElementById("rankToastTag");
+      const titleEl = document.getElementById("rankToastTitle");
+
+      toastEl.className = "rank-toast";
+      if (rank === 1) {
+        toastEl.classList.add("top-1");
+        numEl.textContent = "👑 1위";
+        tagEl.textContent = "1ST";
+        titleEl.textContent = "🎉 신기록 달성! 현재 1위";
+      } else if (rank === 2) {
+        toastEl.classList.add("top-2");
+        numEl.textContent = "🥈 2위";
+        tagEl.textContent = "2ND";
+        titleEl.textContent = "🎉 기록 등록 · 현재 2위";
+      } else if (rank === 3) {
+        toastEl.classList.add("top-3");
+        numEl.textContent = "🥉 3위";
+        tagEl.textContent = "3RD";
+        titleEl.textContent = "🎉 기록 등록 · 현재 3위";
+      } else {
+        numEl.textContent = `${rank}위`;
+        tagEl.textContent = "RANK";
+        titleEl.textContent = "✅ 기록 등록 완료";
+      }
+
+      document.getElementById("rankToastPlayer").textContent = player;
+      document.getElementById("rankToastTime").textContent = timeText;
+      document.getElementById("rankToastTotal").textContent = `전체 ${total}명 중 ${rank}위`;
+
+      toastEl.classList.add("show");
+      clearTimeout(rankToastTimer);
+      rankToastTimer = setTimeout(() => {
+        toastEl.classList.remove("show");
+      }, 4500);
+    }
+
     let toastTimer = null;
     function showToast(msg) {
       dom.toast.textContent = msg;
@@ -1793,9 +2023,6 @@
         if (!nickname) return showToast("닉네임을 입력해주세요.");
         if (totalMs <= 0) return showToast("0초보다 큰 시간 기록을 입력해주세요.");
 
-        const subInfo = [studentId, realName].filter(Boolean).join(" ");
-        const displayLabel = subInfo ? `${nickname} (${subInfo})` : nickname;
-
         const newItem = {
           entryType: "individual",
           nickname,
@@ -1806,18 +2033,27 @@
         };
 
         if (state.dbRef) {
-          state.dbRef.push(newItem)
-            .then(() => showToast(`✅ ${displayLabel}님의 기록이 등록되었습니다.`))
+          const pushedRef = state.dbRef.push();
+          pushedRef.set(newItem)
+            .then(() => {
+              showRankResultModal(newItem, pushedRef.key);
+            })
             .catch(() => showToast("저장 중 오류가 발생했습니다. DB 권한 규칙을 확인하세요."));
         } else {
-          state.records.push({ id: `rec_${Date.now()}`, ...newItem });
+          const newId = `rec_${Date.now()}`;
+          state.records.push({ id: newId, ...newItem });
           saveLocalRecords();
           renderBoard();
-          showToast(`✅ ${displayLabel}님의 기록이 등록되었습니다.`);
+          showRankResultModal(newItem, newId);
         }
 
         e.target.reset();
         document.getElementById("nicknameInput").focus();
+      });
+
+      document.getElementById("rankToastCloseBtn").addEventListener("click", () => {
+        clearTimeout(rankToastTimer);
+        document.getElementById("rankToast").classList.remove("show");
       });
 
       // 기록 수정 저장 (학번·이름은 선택 입력)
